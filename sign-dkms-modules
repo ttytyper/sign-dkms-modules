@@ -1,0 +1,44 @@
+#!/bin/bash
+set -eEu
+
+if [ $# -ne 2 ]; then
+	cat <<-EOF
+	Signs all installed DKMS modules so they can be used with Secure Boot. You need to create a MOK keypair and enroll it on your machine for this to take effect.
+
+	The script is intended for use on Debian but may also work on other distributions that use the same paths.
+
+	Usage: $0 MOK.priv MOK.der
+
+	The Debian wiki has instructions for creating and enrolling your key:
+	https://wiki.debian.org/SecureBoot#Enroling_a_new_key
+
+	Here's a copy of their instructions for reference:
+
+	# openssl req -new -x509 -newkey rsa:2048 -keyout MOK.priv -outform DER -out MOK.der -days 36500 -subj "/CN=My Name/" -nodes
+
+	# mokutil --import MOK.der // prompts for one-time password
+
+	# mokutil --list-new // recheck your key will be prompted on next boot
+
+	<rebooting machine then enters MOK manager EFI utility: enroll MOK, continue, confirm, enter password, reboot>
+
+	# dmesg | grep cert // verify your key is loaded
+
+	EOF
+	exit 1
+fi
+
+priv="$1"
+der="$2"
+algo="sha256"
+
+shopt -s nullglob
+
+for kerneldir in /lib/modules/*/; do
+	version="$(basename "$kerneldir")"
+	major="$(echo "$version"|cut -d. -f1,2)"
+	signfile="/usr/lib/linux-kbuild-$major/scripts/sign-file"
+	for dkmsmodulepath in $kerneldir/updates/dkms/*.ko; do
+		"$signfile" "$algo" "$priv" "$der" "$dkmsmodulepath"
+	done
+done
