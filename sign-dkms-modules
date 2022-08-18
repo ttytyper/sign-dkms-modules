@@ -39,6 +39,7 @@ for kerneldir in /lib/modules/*/; do
 	major="$(echo "$version"|cut -d. -f1,2)"
 	signfile="/usr/lib/linux-kbuild-$major/scripts/sign-file"
 	for dkmsmodulepath in $kerneldir/updates/dkms/*.ko; do
+		echo "Signing $dkmsmodulepath"
 		"$signfile" "$algo" "$priv" "$der" "$dkmsmodulepath"
 	done
 done
